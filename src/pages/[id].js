@@ -2,69 +2,74 @@
 import Head from 'next/head';
 import Link from 'next/link';
 
+/* ----------  STATIC PATHS  ---------- */
 export async function getStaticPaths() {
   const { AIRTABLE_API_KEY, AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME } = process.env;
-  const apiUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(AIRTABLE_TABLE_NAME)}`;
+  const api = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(
+    AIRTABLE_TABLE_NAME,
+  )}`;
 
-  const res = await fetch(`${apiUrl}?pageSize=100`, {
-    headers: { Authorization: `Bearer ${AIRTABLE_API_KEY}` }
+  const r = await fetch(`${api}?pageSize=100`, {
+    headers: { Authorization: `Bearer ${AIRTABLE_API_KEY}` },
   });
-  const { records } = await res.json();
-  const paths = records.map(r => ({ params: { id: r.id } }));
-
-  return { paths, fallback: 'blocking' };
-}
-
-export async function getStaticProps({ params }) {
-  const { AIRTABLE_API_KEY, AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME } = process.env;
-  const apiUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(AIRTABLE_TABLE_NAME)}`;
-
-  const res = await fetch(`${apiUrl}/${params.id}`, {
-    headers: { Authorization: `Bearer ${AIRTABLE_API_KEY}` }
-  });
-  if (!res.ok) {
-    return { notFound: true };
-  }
-  const record = await res.json();
+  const { records } = await r.json();
 
   return {
-    props: { record },
+    paths: records.map(rec => ({ params: { id: rec.id } })),
+    fallback: 'blocking',
+  };
+}
+
+/* ----------  STATIC PROPS  ---------- */
+export async function getStaticProps({ params }) {
+  const { AIRTABLE_API_KEY, AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME } = process.env;
+  const api = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(
+    AIRTABLE_TABLE_NAME,
+  )}`;
+
+  const res = await fetch(`${api}/${params.id}`, {
+    headers: { Authorization: `Bearer ${AIRTABLE_API_KEY}` },
+  });
+  if (!res.ok) return { notFound: true };
+
+  return {
+    props: { record: await res.json() },
     revalidate: 60,
   };
 }
 
+/* ----------  PAGE  ---------- */
 export default function Detail({ record }) {
   const f = record?.fields || {};
 
-  // Construcción segura de nombres de archivo
-  const raw = f.url_img || '';
-  const filenames = raw
-    ? raw.split(',').map(s => s.trim()).filter(Boolean)
-    : [];
+  /* --------  NORMALIZAR url_img -------- */
+  let filenames = [];
+  if (Array.isArray(f.url_img)) {
+    filenames = f.url_img.map(s => String(s).trim()).filter(Boolean);
+  } else if (typeof f.url_img === 'string') {
+    filenames = f.url_img.split(',').map(s => s.trim()).filter(Boolean);
+  }
+  /* ------------------------------------- */
 
-  const baseImg = 'https://panama-green.com/wp-content/uploads/wpallimport/files';
-  const imageUrls = filenames.map(name => `${baseImg}/${name}`);
+  const base      = 'https://panama-green.com/wp-content/uploads/wpallimport/files';
+  const imageUrls = filenames.map(name => `${base}/${name}`);
+  const ogImage   = imageUrls[0] || '';
 
-  // Meta de Open Graph
-  const ogImage = imageUrls[0] || '';
-
-  // WhatsApp share link
-  const shareUrl = `https://tu-dominio.com/${record.id}`;
+  const pageUrl   = `https://tu-dominio.com/${record.id}`;
   const shareText = encodeURIComponent(
-    `${f.street_name || ''} – $${(f.price_current || 0).toLocaleString()}\n${shareUrl}`
+    `${f.street_name || ''} – $${(f.price_current || 0).toLocaleString()}\n${pageUrl}`,
   );
-  const waHref = `https://api.whatsapp.com/send?text=${shareText}`;
 
   return (
     <>
       <Head>
         <title>{f.street_name || 'Detalle de Propiedad'}</title>
         <meta name="description" content={f.remarks_es || f.remarks || ''} />
-        <meta property="og:title" content={f.street_name || ''} />
+        <meta property="og:title"       content={f.street_name || ''} />
         <meta property="og:description" content={f.remarks_es || f.remarks || ''} />
         {ogImage && <meta property="og:image" content={ogImage} />}
-        <meta property="og:url" content={shareUrl} />
-        <meta name="twitter:card" content="summary_large_image" />
+        <meta property="og:url"         content={pageUrl} />
+        <meta name="twitter:card"       content="summary_large_image" />
       </Head>
 
       <main>
@@ -72,7 +77,7 @@ export default function Detail({ record }) {
         <h1>{f.street_name}</h1>
 
         <div className="gallery">
-          {imageUrls.map((url) => (
+          {imageUrls.map(url => (
             <img key={url} src={url} alt={f.street_name} />
           ))}
         </div>
@@ -89,8 +94,8 @@ export default function Detail({ record }) {
           <div><strong>Baños completos:</strong> {f.bathrooms ?? '—'}</div>
           <div><strong>Medios baños:</strong> {f.half_bathrooms ?? '—'}</div>
           <div><strong>Habitaciones:</strong> {f.number_of_rooms ?? '—'}</div>
-          <div><strong>Tamaño lote:</strong> {f.lot_sqft ?? '—'} ft²</div>
-          <div><strong>Total sqft:</strong> {f.sqft_total ?? '—'} ft²</div>
+          <div><strong>Lote:</strong> {f.lot_sqft ?? '—'} ft²</div>
+          <div><strong>Construcción:</strong> {f.sqft_total ?? '—'} ft²</div>
           <div><strong>Estilo:</strong> {f.style || '—'}</div>
           <div><strong>Remodelado:</strong> {f.remodelled || '—'}</div>
           <div><strong>Posesión:</strong> {f.possession || '—'}</div>
@@ -102,8 +107,14 @@ export default function Detail({ record }) {
           <h2>Características</h2>
           <p><strong>Interior:</strong> {f.interior_features || '—'}</p>
           <p><strong>Exterior:</strong> {f.exterior_features || '—'}</p>
-          <p><strong>Servicios:</strong> {(f.other_services || []).join(', ') || '—'}</p>
-          <p><strong>Otras:</strong> {(f.internal_features || []).join(', ') || '—'}</p>
+          <p><strong>Servicios:</strong> {Array.isArray(f.other_services)
+            ? f.other_services.join(', ')
+            : (f.other_services || '—')}
+          </p>
+          <p><strong>Otras:</strong> {Array.isArray(f.internal_features)
+            ? f.internal_features.join(', ')
+            : (f.internal_features || '—')}
+          </p>
         </section>
 
         <section className="remarks">
@@ -111,7 +122,12 @@ export default function Detail({ record }) {
           <p>{f.remarks_es || f.remarks || '—'}</p>
         </section>
 
-        <a href={waHref} className="btn-share" target="_blank" rel="noopener">
+        <a
+          href={`https://api.whatsapp.com/send?text=${shareText}`}
+          className="btn-share"
+          target="_blank"
+          rel="noopener"
+        >
           Compartir por WhatsApp
         </a>
       </main>
@@ -131,13 +147,10 @@ export default function Detail({ record }) {
           margin: 1rem 0;
           color: #2a9d8f;
         }
-        h1 {
-          text-align: center;
-          margin-bottom: 1rem;
-        }
+        h1 { text-align: center; margin-bottom: 1rem; }
         .gallery {
           display: grid;
-          grid-template-columns: repeat(auto-fill,minmax(200px,1fr));
+          grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
           gap: 4px;
         }
         .gallery img {
