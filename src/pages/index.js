@@ -1,5 +1,6 @@
 // pages/index.js
 import Head from 'next/head';
+import Link from 'next/link';
 
 export async function getStaticProps() {
   const API_KEY    = process.env.AIRTABLE_API_KEY;
@@ -7,7 +8,6 @@ export async function getStaticProps() {
   const TABLE_NAME = process.env.AIRTABLE_TABLE_NAME;
   const API_URL    = `https://api.airtable.com/v0/${BASE_ID}/${encodeURIComponent(TABLE_NAME)}`;
 
-  // Fetch directo a Airtable
   const res = await fetch(`${API_URL}?pageSize=100`, {
     headers: {
       Authorization: `Bearer ${API_KEY}`,
@@ -20,8 +20,6 @@ export async function getStaticProps() {
   }
 
   const { records } = await res.json();
-
-  // Aplanamos y parseamos el campo url_img en un array
   const properties = records.map(r => {
     const f = r.fields;
     return {
@@ -36,7 +34,6 @@ export async function getStaticProps() {
 
   return {
     props: { properties },
-    // Regenera cada 60s en producción
     revalidate: 60,
   };
 }
@@ -53,13 +50,12 @@ export default function Catalog({ properties }) {
         <h1>Catálogo de Propiedades</h1>
         <ul className="grid">
           {properties.map((p) => {
-            // Construye la URL de la miniatura:
             const thumb = p.urlImgs[0]
               ? `https://panama-green.com/wp-content/uploads/wpallimport/files/${p.urlImgs[0]}`
               : null;
             return (
               <li key={p.id}>
-                <a href={`/${p.id}`} className="card">
+                <Link href={`/${p.id}`} className="card">
                   {thumb
                     ? <img src={thumb} alt={p.street_name} className="thumb" />
                     : <div className="thumb-placeholder">Sin imagen</div>
@@ -72,7 +68,7 @@ export default function Catalog({ properties }) {
                       ${p.price_current?.toLocaleString()}
                     </p>
                   </div>
-                </a>
+                </Link>
               </li>
             );
           })}

@@ -1,5 +1,7 @@
 // pages/[id].js
 import Head from 'next/head';
+import Link from 'next/link';
+
 
 // 1) Tell Next.js which pages to prebuild
 export async function getStaticPaths() {
@@ -67,7 +69,8 @@ export default function Detail({ record }) {
       </Head>
 
       <main>
-        <a href="/" className="back-link">← Volver al catálogo</a>
+        <Link href="/" className="back-link">← Volver al catálogo</Link>
+
         <h1>{f.street_name}</h1>
 
         <div className="gallery">
