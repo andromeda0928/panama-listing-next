@@ -28,7 +28,9 @@ export async function getStaticProps() {
       map_area:      f.map_area,
       property_type: f.property_type,
       price_current: f.price_current,
-      urlImgs:       f.url_img ? f.url_img.split(',').map(s=>s.trim()) : [],
+      urlImgs:       Array.isArray(f.url_img)
+                     ? f.url_img.map(s => s.trim())
+                     : (f.url_img ? f.url_img.split(',').map(s => s.trim()) : []),
     };
   });
 

@@ -43,7 +43,14 @@ export default function Detail({ record }) {
 
   // Build absolute URLs for your images
   const baseImg = 'https://panama-green.com/wp-content/uploads/wpallimport/files';
-  const filenames = f.url_img?.split(',').map((s) => s.trim()) || [];
+
+
+
+  const filenames = f.url_img
+    ? f.url_img.split(',').map((s) => s.trim())
+    : [];
+
+
   const imageUrls = filenames.map((name) => `${baseImg}/${name}`);
 
   // Pick first image for OG
