@@ -1,7 +1,8 @@
+// src/pages/[id].js
 import Head from 'next/head';
 import Link from 'next/link';
 
-/* ----------  STATIC PATHS  ---------- */
+/* --- STATIC PATHS --- */
 export async function getStaticPaths() {
   const { AIRTABLE_API_KEY, AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME } = process.env;
   const api = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(AIRTABLE_TABLE_NAME)}`;
@@ -11,13 +12,10 @@ export async function getStaticPaths() {
   });
   const { records } = await r.json();
 
-  return {
-    paths: records.map(rec => ({ params: { id: rec.id } })),
-    fallback: 'blocking',
-  };
+  return { paths: records.map(r => ({ params: { id: r.id } })), fallback: 'blocking' };
 }
 
-/* ----------  STATIC PROPS  ---------- */
+/* --- STATIC PROPS --- */
 export async function getStaticProps({ params }) {
   const { AIRTABLE_API_KEY, AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME } = process.env;
   const api = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(AIRTABLE_TABLE_NAME)}`;
@@ -27,41 +25,31 @@ export async function getStaticProps({ params }) {
   });
   if (!res.ok) return { notFound: true };
 
-  return {
-    props: { record: await res.json() },
-    revalidate: 60,
-  };
+  return { props: { record: await res.json() }, revalidate: 60 };
 }
 
-/* ----------  PAGE  ---------- */
+/* --- PAGE --- */
 export default function Detail({ record }) {
   const f = record?.fields || {};
 
-  /** 1. Normalizar url_img en un array seguro **/
-  let filenames = [];
-  if (Array.isArray(f.url_img)) {
-    filenames = f.url_img.map(s => String(s).trim()).filter(Boolean);
-  } else if (typeof f.url_img === 'string') {
-    filenames = f.url_img.split(',').map(s => s.trim()).filter(Boolean);
-  }
+  /* ----------  IMAGES  ---------- */
+  const raw = Array.isArray(f.url_img) ? f.url_img.join(',') : (f.url_img || '');
+  const filenames = raw.split(',').map(s => s.trim()).filter(Boolean);
 
-  /** 2. Construir URLs absolutas **/
   const base      = 'https://panama-green.com/wp-content/uploads/wpallimport/files';
-  const imageUrls = filenames.map(name => `${base}/${name}`);
-  const ogImage   = imageUrls[0] || '';
+  const imgs      = filenames.map(fn => `${base}/${fn}`);
+  const ogImage   = imgs[0] || '';
 
-  /** 3. Link de WhatsApp **/
+  /* ----------  SHARE  ---------- */
   const pageUrl   = `https://tu-dominio.com/${record.id}`;
-  const shareText = encodeURIComponent(
-    `${f.street_name || ''} – $${(f.price_current || 0).toLocaleString()}\n${pageUrl}`,
-  );
-  const waHref = `https://api.whatsapp.com/send?text=${shareText}`;
+  const waText    = encodeURIComponent(`${f.street_name || ''} – $${(f.price_current || 0).toLocaleString()}\n${pageUrl}`);
+  const waHref    = `https://api.whatsapp.com/send?text=${waText}`;
 
   return (
     <>
       <Head>
         <title>{f.street_name || 'Detalle de Propiedad'}</title>
-        <meta name="description" content={f.remarks_es || f.remarks || ''} />
+        <meta name="description"        content={f.remarks_es || f.remarks || ''} />
         <meta property="og:title"       content={f.street_name || ''} />
         <meta property="og:description" content={f.remarks_es || f.remarks || ''} />
         {ogImage && <meta property="og:image" content={ogImage} />}
@@ -74,17 +62,28 @@ export default function Detail({ record }) {
         <h1>{f.street_name}</h1>
 
         <div className="gallery">
-          {imageUrls.map(url => (
-            <img key={url} src={url} alt={f.street_name} />
-          ))}
+          {imgs.map(url => <img key={url} src={url} alt={f.street_name} />)}
         </div>
 
-        {/* … resto del contenido y los estilos se mantienen igual … */}
+        <section className="info-grid">
+          {/* … TODO: tus campos, idénticos a antes … */}
+        </section>
+
+        <section className="features">
+          {/* … TODO: características … */}
+        </section>
+
+        <section className="remarks">
+          <h2>Descripción</h2>
+          <p>{f.remarks_es || f.remarks || '—'}</p>
+        </section>
 
         <a href={waHref} className="btn-share" target="_blank" rel="noopener">
           Compartir por WhatsApp
         </a>
       </main>
+
+      {/* estilos sin cambiar */}
     </>
   );
 }
