@@ -28,9 +28,10 @@ export async function getStaticProps() {
       map_area:      f.map_area,
       property_type: f.property_type,
       price_current: f.price_current,
-      urlImgs:       Array.isArray(f.url_img)
-                     ? f.url_img.map(s => s.trim())
-                     : (f.url_img ? f.url_img.split(',').map(s => s.trim()) : []),
+      // urlImgs siempre array aunque f.url_img sea undefined
+      urlImgs: Array.isArray(f.url_img)
+        ? f.url_img.map(s => s.trim())
+        : (f.url_img ? f.url_img.split(',').map(s => s.trim()) : []),
     };
   });
 
@@ -51,7 +52,7 @@ export default function Catalog({ properties }) {
       <main>
         <h1>Catálogo de Propiedades</h1>
         <ul className="grid">
-          {properties.map((p) => {
+          {properties.map(p => {
             const thumb = p.urlImgs[0]
               ? `https://panama-green.com/wp-content/uploads/wpallimport/files/${p.urlImgs[0]}`
               : null;
